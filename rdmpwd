@@ -1,0 +1,62 @@
+#!/bin/bash
+if [[ $(/usr/bin/id -u) -ne 0 ]]
+then
+    echo "Not running as root"
+    exit
+fi
+sudo apt install shc
+cat << "EOF"
+This script was made by
+ █████  ███    ███  █████  ███    ██    ███████ ██   ██ 
+██   ██ ████  ████ ██   ██ ████   ██    ██      ██   ██ 
+███████ ██ ████ ██ ███████ ██ ██  ██    ███████ ███████ 
+██   ██ ██  ██  ██ ██   ██ ██  ██ ██         ██ ██   ██ 
+██   ██ ██      ██ ██   ██ ██   ████ ██ ███████ ██   ██ 
+EOF
+                                                                                            
+
+
+while getopts u:p: flag
+do
+    case "${flag}" in
+        u) username=${OPTARG};;
+        p) logic=${OPTARG};;
+    esac
+done
+cat <<EOF > /tmp/tmpw-$username
+#!/bin/bash    
+time=\$(timedatectl | grep -E "Local time" | grep -o '[0-9]' |tr -d '\n')    
+echo \$time    
+let second="(\$time % 10 ** 2)"    
+let minute="(\$time % 10 ** 4)/10 ** 2"    
+let hour="(\$time % 10 ** 6)/10 ** 4"    
+let day="(\$time % 10 ** 8)/10 ** 6"    
+let month="(\$time % 10 ** 10)/10 ** 8"    
+let year="(\$time % 10 ** 12)/10 ** 10" 
+let pass=$logic    
+echo -e "\$pass\n\$pass" | passwd $username  
+EOF
+shc -f /tmp/tmpw-$username
+sudo mv /tmp/tmpw-$username.x /usr/bin/tmpw-$username
+sudo rm /tmp/tmpw-$username
+sudo rm /tmp/tmpw-$username.x.c   
+cat <<EOF > /etc/systemd/system/randword$username.service
+[Unit]
+Description=Sets random password
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/usr/bin/tmpw-$username
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl start randword$username
+sudo systemctl enable randword$username
+sudo systemctl daemon-reload
+
